@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Senarai Menu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .menu-item {
+      transform: scale(0.95);
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo"><h2>myMakTehCafe</h2></div>
+  <ul>
+    <li><a href="dashboard.html">Laman Utama</a></li>
+    <li><a href="menu.html" class="active">Menu</a></li>
+    <li><a href="order.html">Pesanan</a></li>
+    <li><a href="status.html">Status Operasi</a></li>
+    <li><a href="announcement.html">Pengumuman</a></li>
+    <li><a href="#" onclick="logout()">Log Keluar</a></li>
+  </ul>
+</div>
+
+<div class="main-content">
+  <div class="menu">
+    <h1>Senarai Menu</h1>
+    <a href="tambahmenu.html" class="tambah-btn tambah-menu">+ Tambah Menu Baharu</a>
+
+    <div style="margin-top: 10px; margin-bottom: 20px; text-align: left;">
+      <label for="categoryFilter" style="font-weight: 600; margin-right: 10px;">Tapis Kategori:</label>
+      <select id="categoryFilter" onchange="loadMenu()" style="padding: 5px 10px; border-radius: 5px;">
+        <option value="">Semua</option>
+        <option value="Makanan">Makanan</option>
+        <option value="Minuman">Minuman</option>
+        <option value="Lain-lain">Lain-lain</option>
+      </select>
+    </div>
+
+    <div class="menu-list" id="menuList">Memuatkan menu...</div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+    authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+    projectId: "mymaktehcafe-81d4e",
+    storageBucket: "mymaktehcafe-81d4e",
+    messagingSenderId: "28518221029",
+    appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+    measurementId: "G-FZXKYNHJP4"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  async function loadMenu() {
+    const menuList = document.getElementById("menuList");
+    menuList.innerHTML = "";
+
+    const selectedCategory = document.getElementById("categoryFilter").value;
+
+    try {
+      const snapshot = await db.collection("menu").orderBy("createdAt", "desc").get();
+      if (snapshot.empty) {
+        menuList.innerHTML = "<p>Tiada menu ditambah lagi.</p>";
+        return;
+      }
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const kategori = data.category || "Lain-lain";
+
+        if (selectedCategory && kategori !== selectedCategory) return;
+
+        const priceNum = Number(data.price);
+        const priceDisplay = isNaN(priceNum) ? "0.00" : priceNum.toFixed(2);
+
+        const item = document.createElement("div");
+        item.className = "menu-item";
+        item.innerHTML = `
+          <img src="${data.image || ''}" alt="${data.name}">
+          <h3>${data.name}</h3>
+          <p>RM ${priceDisplay}</p>
+          <p>${data.detail || ''}</p>
+          <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button onclick="editMenu('${doc.id}', \`${data.name}\`, ${priceNum}, \`${data.detail || ''}\`, \`${data.image || ''}\`)" class="order-btn">Edit</button>
+            <button onclick="padamMenu('${doc.id}')" class="order-btn">Padam</button>
+          </div>
+        `;
+        menuList.appendChild(item);
+      });
+
+    } catch (error) {
+      menuList.innerHTML = "<p>Gagal memuatkan menu. Sila cuba lagi.</p>";
+      console.error("Error loading menu:", error);
+    }
+  }
+
+  function editMenu(id, name, price, detail, imageURL) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Sunting Menu',
+      html: `
+        <img src="${imageURL}" style="max-width:200px; border-radius:12px; margin-bottom:15px;" /><br>
+        <strong>Nama:</strong> ${name}<br>
+        <strong>Harga:</strong> RM ${Number(price).toFixed(2)}<br>
+        <strong>Detail:</strong> ${detail}<br><br>
+        <a href="editmenu.html?id=${id}" class="swal2-confirm swal2-styled" style="background-color:#c42217; border:none;">Pergi ke halaman sunting</a>
+      `,
+      showConfirmButton: false
+    });
+  }
+
+  async function padamMenu(id) {
+    const result = await Swal.fire({
+      title: 'Padam menu ini?',
+      text: "Tindakan ini tidak boleh dikembalikan.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#c42217',
+      cancelButtonColor: '#999',
+      confirmButtonText: 'Ya, padam',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await db.collection("menu").doc(id).delete();
+        loadMenu();
+        Swal.fire({
+          icon: 'success',
+          title: 'Dipadam!',
+          text: 'Menu berjaya dipadam.',
+          confirmButtonColor: '#c42217'
+        });
+      } catch (error) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Ralat',
+          text: 'Gagal memadam menu. Sila cuba lagi.',
+          confirmButtonColor: '#c42217'
+        });
+        console.error(error);
+      }
+    }
+  }
+
+  function logout() {
+    Swal.fire({
+      title: 'Log keluar?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#c42217',
+      cancelButtonColor: '#999',
+      confirmButtonText: 'Ya',
+      cancelButtonText: 'Tidak'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = "login.html";
+      }
+    });
+  }
+
+  loadMenu();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tambah Menu - MyMakTehCafe</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Poppins&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo"><h2>myMakTehCafe</h2></div>
+    <ul>
+      <li><a href="dashboard.html">Laman Utama</a></li>
+      <li><a href="menu.html" class="active">Menu</a></li>
+      <li><a href="order.html">Pesanan</a></li>
+      <li><a href="status.html">Status Operasi</a></li>
+      <li><a href="announcement.html">Pengumuman</a></li>
+      <li><a href="#" onclick="logout()">Log Keluar</a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="menu">
+      <h1>Tambah Menu Baharu</h1>
+      <form id="addMenuForm" class="announcement-form">
+        <label for="itemName">Nama Menu:</label>
+        <input type="text" id="itemName" placeholder="Contoh: Nasi Lemak" required />
+
+        <label for="itemPrice">Harga (RM):</label>
+        <input type="number" id="itemPrice" placeholder="Contoh: 3.50" step="0.01" required />
+
+        <label for="itemDescription">Deskripsi Menu:</label>
+        <textarea id="itemDescription" rows="3" placeholder="Contoh: Nasi lemak dengan sambal pedas dan telur rebus." required></textarea>
+
+        <label for="itemImage">Gambar Menu:</label>
+        <input type="file" id="itemImage" accept="image/*" required />
+
+        <img id="previewImage" src="" alt="Preview Gambar" style="width: 200px; max-width: 100%; margin-top: 10px; border-radius: 10px; display: none;" />
+
+        <label for="itemCategory">Kategori Menu:</label>
+        <select id="itemCategory" required>
+          <option value="">-- Pilih Kategori --</option>
+          <option value="Makanan">Makanan</option>
+          <option value="Minuman">Minuman</option>
+          <option value="Pencuci Mulut">Pencuci Mulut</option>
+          <option value="Lain-lain">Lain-lain</option>
+        </select>
+
+        <button type="submit">Simpan Menu</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-storage-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+      authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+      projectId: "mymaktehcafe-81d4e",
+      storageBucket: "mymaktehcafe-81d4e",
+      messagingSenderId: "28518221029",
+      appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+      measurementId: "G-FZXKYNHJP4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    document.getElementById('itemImage').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = document.getElementById('previewImage');
+        img.src = reader.result;
+        img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('addMenuForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('itemName').value.trim();
+      const price = parseFloat(document.getElementById('itemPrice').value);
+      const detail = document.getElementById('itemDescription').value.trim();
+      const imageFile = document.getElementById('itemImage').files[0];
+      const category = document.getElementById('itemCategory').value;
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+
+      if (!name || isNaN(price) || !detail || !imageFile || !category) {
+        return Swal.fire('Amaran', 'Sila isi semua ruangan dengan betul.', 'warning');
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sedang Menyimpan...';
+
+      try {
+        const storageRef = storage.ref().child('menuImages/' + Date.now() + '_' + imageFile.name);
+        await storageRef.put(imageFile);
+        const imageUrl = await storageRef.getDownloadURL();
+
+        await db.collection('menu').add({
+          name,
+          price,
+          detail,
+          image: imageUrl,
+          category,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        Swal.fire('Berjaya', 'Menu telah ditambah!', 'success').then(() => {
+          window.location.href = 'menu.html';
+        });
+
+      } catch (error) {
+        console.error('Gagal tambah menu:', error);
+        Swal.fire('Ralat', 'Gagal menambah menu. Sila cuba lagi.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Simpan Menu';
+      }
+    });
+
+    function logout() {
+      Swal.fire({
+        title: 'Log keluar?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#c42217',
+        cancelButtonColor: '#999',
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Tidak'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = 'login.html';
+        }
+      });
+    }
+    window.logout = logout;
+  </script>
+</body>
+</html>

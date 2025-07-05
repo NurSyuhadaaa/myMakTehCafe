@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Menu - MyMakTehCafe</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Poppins&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-storage-compat.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo"><h2>myMakTehCafe</h2></div>
+    <ul>
+      <li><a href="dashboard.html">Laman Utama</a></li>
+      <li><a href="menu.html" class="active">Menu</a></li>
+      <li><a href="order.html">Pesanan</a></li>
+      <li><a href="status.html">Status Operasi</a></li>
+      <li><a href="announcement.html">Pengumuman</a></li>
+      <li><a href="#" onclick="logout()">Log Keluar</a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="menu">
+      <h1>Kemaskini Menu</h1>
+      <form id="editMenuForm" class="announcement-form">
+        <label for="itemName">Nama Menu:</label>
+        <input type="text" id="itemName" placeholder="Contoh: Nasi Lemak" required />
+
+        <label for="itemPrice">Harga (RM):</label>
+        <input type="number" id="itemPrice" placeholder="Contoh: 3.50" step="0.01" required />
+
+        <label for="itemDescription">Deskripsi Menu:</label>
+        <textarea id="itemDescription" rows="3" placeholder="Contoh: Nasi lemak dengan sambal pedas dan telur rebus."></textarea>
+
+        <label for="itemCategory">Kategori:</label>
+        <select id="itemCategory" required>
+          <option value="">-- Pilih Kategori --</option>
+          <option value="Makanan">Makanan</option>
+          <option value="Minuman">Minuman</option>
+          <option value="Lain-lain">Lain-lain</option>
+        </select>
+
+        <label for="itemImage">Gambar Baru (pilihan):</label>
+        <input type="file" id="itemImage" accept="image/*" />
+        <img id="previewImage" src="" alt="Preview Gambar" style="width: 200px; max-width: 100%; margin-top: 10px; border-radius: 10px; display: none;" />
+
+        <button type="submit">Simpan Perubahan</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Firebase config & init
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+      authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+      projectId: "mymaktehcafe-81d4e",
+      storageBucket: "mymaktehcafe-81d4e.appspot.com",
+      messagingSenderId: "28518221029",
+      appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+      measurementId: "G-FZXKYNHJP4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // Elements
+    const form = document.getElementById('editMenuForm');
+    const itemName = document.getElementById('itemName');
+    const itemPrice = document.getElementById('itemPrice');
+    const itemDescription = document.getElementById('itemDescription');
+    const itemCategory = document.getElementById('itemCategory');
+    const itemImage = document.getElementById('itemImage');
+    const previewImage = document.getElementById('previewImage');
+
+    // Get ID dari URL
+    const params = new URLSearchParams(window.location.search);
+    const menuId = params.get('id');
+
+    // Load data menu dari Firestore
+    async function loadMenu() {
+      if (!menuId) {
+        Swal.fire('Ralat', 'Tiada ID menu diberikan.', 'error');
+        return;
+      }
+
+      try {
+        const docRef = db.collection('menu').doc(menuId);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+          Swal.fire('Ralat', 'Menu tidak ditemui.', 'error');
+          return;
+        }
+
+        const data = docSnap.data();
+        itemName.value = data.name || '';
+        itemPrice.value = data.price || '';
+        itemDescription.value = data.detail || '';
+        itemCategory.value = data.category || '';
+        if (data.image) {
+          previewImage.src = data.image;
+          previewImage.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Error loading menu:', error);
+        Swal.fire('Ralat', 'Gagal memuatkan menu.', 'error');
+      }
+    }
+
+    // Update menu bila form disubmit
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const name = itemName.value.trim();
+      const price = parseFloat(itemPrice.value);
+      const detail = itemDescription.value.trim();
+      const category = itemCategory.value;
+      const imageFile = itemImage.files[0];
+
+      if (!name || isNaN(price) || !category) {
+        Swal.fire('Amaran', 'Sila isi semua maklumat wajib dengan betul.', 'warning');
+        return;
+      }
+
+      const docRef = db.collection('menu').doc(menuId);
+
+      try {
+        let imageUrl;
+
+        if (imageFile) {
+          const storageRef = storage.ref();
+          const imageRef = storageRef.child('menuImages/' + Date.now() + '_' + imageFile.name);
+          await imageRef.put(imageFile);
+          imageUrl = await imageRef.getDownloadURL();
+        }
+
+        const updateData = {
+          name,
+          price,
+          detail,
+          category,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (imageUrl) updateData.image = imageUrl;
+
+        await docRef.update(updateData);
+
+        await Swal.fire('Berjaya', 'Menu berjaya dikemaskini!', 'success');
+        window.location.href = 'menu.html';
+
+      } catch (error) {
+        console.error('Error updating menu:', error);
+        Swal.fire('Ralat', 'Gagal kemaskini menu. Sila cuba lagi.', 'error');
+      }
+    });
+
+    // Preview gambar bila dipilih
+    itemImage.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) {
+        previewImage.style.display = 'none';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        previewImage.src = reader.result;
+        previewImage.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Load menu data bila page dibuka
+    loadMenu();
+
+    // Logout
+    function logout() {
+      Swal.fire({
+        title: 'Log keluar?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#c42217',
+        cancelButtonColor: '#999',
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Tidak'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = 'login.html';
+        }
+      });
+    }
+    window.logout = logout;
+  </script>
+</body>
+</html>

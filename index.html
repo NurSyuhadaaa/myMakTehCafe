@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>myMakTehCafe - Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .stats-boxes {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .stat-box {
+      flex: 1;
+      min-width: 180px;
+      background-color: #edd947;
+      padding: 15px 20px;
+      border-radius: 15px;
+      color: #000;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stat-box h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .stat-box p {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    canvas#salesChart {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    #staffInfo {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-weight: bold;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <h2>myMakTehCafe</h2>
+    </div>
+    <ul>
+      <li><a href="dashboard.html" class="active">Laman Utama</a></li>
+      <li><a href="menu.html">Menu</a></li>
+      <li><a href="order.html">Pesanan</a></li>
+      <li><a href="status.html">Status Operasi</a></li>
+      <li><a href="announcement.html">Pengumuman</a></li>
+      <li><a href="#" onclick="logout()">Log Keluar</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div id="staffInfo">Pengguna</div>
+
+    <div id="home" class="content active">
+      <h1>Selamat Datang ke Laman Utama</h1>
+      <p>Ini adalah laman utama untuk menguruskan cafe anda.</p>
+
+      <div class="stats-boxes">
+        <div class="stat-box">
+          <h3>Tarikh</h3>
+          <p id="todayDate">—</p>
+        </div>
+        <div class="stat-box">
+          <h3>Tempahan Hari Ini</h3>
+          <p id="todayOrders">0</p>
+        </div>
+        <div class="stat-box">
+          <h3>Jumlah Jualan (RM)</h3>
+          <p id="todayRevenue">0.00</p>
+        </div>
+      </div>
+
+      <canvas id="salesChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-storage-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+      authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+      projectId: "mymaktehcafe-81d4e",
+      storageBucket: "mymaktehcafe-81d4e.appspot.com",
+      messagingSenderId: "28518221029",
+      appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+      measurementId: "G-FZXKYNHJP4"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    async function loadDashboardStats() {
+      const dbRef = firebase.firestore();
+      const ordersRef = dbRef.collection("orders");
+
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+      let dailyOrders = 0;
+      let dailyRevenue = 0;
+      const salesByDate = {};
+
+      const snapshot = await ordersRef.get();
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (!data.createdAt) return;
+
+        const orderDate = data.createdAt.toDate();
+        const dateStr = orderDate.toISOString().split("T")[0];
+
+        if (!salesByDate[dateStr]) {
+          salesByDate[dateStr] = { count: 0, total: 0 };
+        }
+        salesByDate[dateStr].count++;
+        salesByDate[dateStr].total += parseFloat(data.total || 0);
+
+        if (dateStr === todayStr) {
+          dailyOrders++;
+          dailyRevenue += parseFloat(data.total || 0);
+        }
+      });
+
+      document.getElementById("todayDate").textContent = today.toLocaleDateString("ms-MY");
+      document.getElementById("todayOrders").textContent = dailyOrders;
+      document.getElementById("todayRevenue").textContent = dailyRevenue.toFixed(2);
+
+      const sortedDates = Object.keys(salesByDate).sort();
+      const chartLabels = sortedDates.slice(-7);
+      const chartData = chartLabels.map(date => salesByDate[date].total);
+
+      renderChart(chartLabels, chartData);
+    }
+
+    function renderChart(labels, data) {
+      new Chart(document.getElementById("salesChart"), {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Jumlah Jualan (RM)",
+            data: data,
+            borderColor: "#c42217",
+            backgroundColor: "rgba(196, 34, 23, 0.1)",
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: "#c42217",
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: "Prestasi Jualan 7 Hari Terakhir" }
+          },
+          scales: {
+            y: { beginAtZero: true },
+            x: { ticks: { autoSkip: false } }
+          }
+        }
+      });
+    }
+
+    window.onload = function () {
+      loadDashboardStats();
+
+      const name = localStorage.getItem('loggedInStaffName') || 'Pengguna';
+      const staffId = localStorage.getItem('loggedInStaffId') || '';
+      document.getElementById("staffInfo").textContent = `${name} (${staffId})`;
+    };
+
+    function logout() {
+      Swal.fire({
+        title: 'Log keluar?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#c42217',
+        cancelButtonColor: '#999',
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Tidak'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "login.html";
+        }
+      });
+    }
+  </script>
+</body>
+</html>

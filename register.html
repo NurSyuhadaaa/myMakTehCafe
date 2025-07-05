@@ -1,0 +1,189 @@
+<!-- register.html (Guna CDN Firebase yang betul) -->
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daftar Staf Baharu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Firebase CDN (Compat Version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #800000;
+      --secondary: #c9b323;
+      --accent: #d62828;
+      --light: #f8f9fa;
+      --dark: #4b0000;
+    }
+    * {margin: 0; padding: 0; box-sizing: border-box;}
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--primary);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(rgba(128, 0, 0, 0.75), rgba(75, 0, 0, 0.85)), url('assets/bg.png') center/cover no-repeat;
+      z-index: -1;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .card h1 {
+      font-family: 'Dancing Script', cursive;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .input-group i {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+    }
+    .input-group input {
+      width: 100%;
+      padding: 15px 15px 15px 45px;
+      border: 2px solid rgba(128, 0, 0, 0.1);
+      border-radius: 50px;
+      background: white;
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(to right, var(--primary), var(--dark));
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 25px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Daftar Staf Baharu</h1>
+    <form id="staffForm">
+      <div class="input-group">
+        <i class="fas fa-user"></i>
+        <input type="text" id="name" placeholder="Nama Penuh" required>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-envelope"></i>
+        <input type="email" id="email" placeholder="Alamat Emel" required>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-phone"></i>
+        <input type="tel" id="phone" placeholder="No. Telefon" required>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" id="password" placeholder="Kata Laluan" required>
+      </div>
+      <button type="submit">Daftar Akaun</button>
+    </form>
+    <a href="login.html" class="back-link">Kembali ke Login</a>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+      authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+      projectId: "mymaktehcafe-81d4e",
+      storageBucket: "mymaktehcafe-81d4e",
+      messagingSenderId: "28518221029",
+      appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+      measurementId: "G-FZXKYNHJP4"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    async function generateStaffId() {
+      const snapshot = await db.collection("staff").get();
+      const count = snapshot.size + 1;
+      return `S${String(count).padStart(2, '0')}`;
+    }
+
+    document.getElementById("staffForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const userId = userCredential.user.uid;
+        const staffId = await generateStaffId();
+
+        await db.collection("staff").doc(userId).set({
+          name,
+          email,
+          phone,
+          staffId,
+          createdAt: new Date()
+        });
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Pendaftaran Berjaya!',
+          html: `ID Staf anda ialah <strong>${staffId}</strong><br><br><button onclick="navigator.clipboard.writeText('${staffId}')">📋 Salin ID</button>`,
+          confirmButtonText: 'Pergi ke Login',
+          confirmButtonColor: '#800000'
+        }).then(() => {
+          window.location.href = "login.html";
+        });
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Ralat',
+          text: err.message
+        });
+      }
+    });
+  </script>
+</body>
+</html>

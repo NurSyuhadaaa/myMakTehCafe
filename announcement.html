@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pengumuman | myMakTehCafe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="style.css" />
+  
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo"><h2>myMakTehCafe</h2></div>
+  <ul>
+    <li><a href="dashboard.html">Laman Utama</a></li>
+    <li><a href="menu.html" class="active">Menu</a></li>
+    <li><a href="order.html">Pesanan</a></li>
+    <li><a href="status.html">Status Operasi</a></li>
+    <li><a href="announcement.html">Pengumuman</a></li>
+    <li><a href="#" onclick="logout()">Log Keluar</a></li>
+  </ul>
+
+
+  </div>
+
+  <main class="main-content">
+  <div class="announcement-container" role="main" aria-label="Pengumuman Cafe">
+    <h1 class="announcement-title" tabindex="0">Pengumuman Cafe</h1>
+
+    <div class="announcement-grid">
+      <form class="announcement-form" onsubmit="event.preventDefault(); addAnnouncement();">
+        <input type="text" id="announcementTitle" placeholder="Tajuk Pengumuman" class="input" aria-label="Tajuk Pengumuman" required />
+        <textarea id="announcementContent" placeholder="Isi kandungan pengumuman..." class="input" aria-label="Isi kandungan pengumuman" required></textarea>
+        <button type="submit" aria-label="Hantar Pengumuman">Hantar Pengumuman</button>
+      </form>
+      <section id="announcementList" aria-live="polite" aria-relevant="additions"></section>
+    </div>
+  </div>
+</main>
+
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+      authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+      projectId: "mymaktehcafe-81d4e",
+      storageBucket: "mymaktehcafe-81d4e.appspot.com",
+      messagingSenderId: "28518221029",
+      appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+      measurementId: "G-FZXKYNHJP4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function formatTimestamp(timestamp) {
+      if (!timestamp) return '';
+      const date = timestamp.toDate();
+      // Format date as "12 Apr 2024, 15:20"
+      const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit', hour12: false };
+      return date.toLocaleDateString('ms-MY', options);
+    }
+
+    // Fungsi padam pengumuman
+    function deleteAnnouncement(id) {
+      Swal.fire({
+        title: "Padam pengumuman ini?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#999",
+        confirmButtonText: "Ya, padam",
+        cancelButtonText: "Batal"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          db.collection("announcements").doc(id).delete()
+            .then(() => {
+              Swal.fire("Dipadam", "Pengumuman telah dipadam.", "success");
+            })
+            .catch((error) => {
+              Swal.fire("Ralat", "Gagal padam: " + error.message, "error");
+            });
+        }
+      });
+    }
+
+    function addAnnouncement() {
+      const title = document.getElementById('announcementTitle').value.trim();
+      const content = document.getElementById('announcementContent').value.trim();
+
+      if (!title || !content) {
+        return Swal.fire("Ralat", "Sila isi semua ruangan", "warning");
+      }
+
+      db.collection("announcements").add({
+        title,
+        content,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        Swal.fire("Berjaya", "Pengumuman dihantar!", "success");
+        document.getElementById('announcementTitle').value = '';
+        document.getElementById('announcementContent').value = '';
+        loadAnnouncements();
+      }).catch((error) => {
+        Swal.fire("Ralat", "Gagal menghantar pengumuman: " + error.message, "error");
+      });
+    }
+
+    function loadAnnouncements() {
+  db.collection("announcements")
+    .orderBy("createdAt", "desc")
+    .onSnapshot((snapshot) => {
+      const list = document.getElementById('announcementList');
+      list.innerHTML = '';
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const formattedDate = formatTimestamp(data.createdAt);
+        const id = doc.id;
+
+        list.innerHTML += `
+  <article class="announcement-card" tabindex="0" style="position: relative;">
+    <button class="delete-button" onclick="deleteAnnouncement('${id}')">
+      🗑️
+    </button>
+    <h3>${data.title}</h3>
+    <div class="announcement-date">${formattedDate}</div>
+    <p>${data.content}</p>
+  </article>
+`;
+      });
+    });
+}
+
+
+    window.onload = loadAnnouncements;
+
+    function logout() {
+      Swal.fire({
+        title: 'Log keluar?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#c42217',
+        cancelButtonColor: '#999',
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Tidak'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "login.html";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+

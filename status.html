@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Status Operasi - myMakTehCafe Admin</title>
+
+  <!-- Font & CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    .live-clock {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      color: #333;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Butang Back ke dashboard.html -->
+  <a href="dashboard.html" class="back-btn" aria-label="Kembali ke Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  </a>
+
+  <div class="status-container">
+    <h2>Status Operasi Cafe</h2>
+
+    <!-- LIVE CLOCK -->
+    <div id="liveClock" class="live-clock">🕒 Masa Sekarang: --:--:--</div>
+
+    <div id="nextOpenPreview" class="highlight-box hidden">
+      ⏰ Akan dibuka semula pada: <strong id="nextOpenValue">-</strong>
+    </div>
+
+    <div class="highlight-box">
+      <label for="statusSelect">Status:</label>
+      <select id="statusSelect">
+        <option value="Buka">Buka</option>
+        <option value="Tutup">Tutup</option>
+        <option value="Cuti">Cuti</option>
+      </select>
+    </div>
+
+    <div id="waktuContainer">
+      <label for="bukaTime">Waktu Buka:</label>
+      <input type="text" id="bukaTime" class="flatpickr-input" placeholder="Contoh: 8:00 AM">
+
+      <label for="tutupTime">Waktu Tutup:</label>
+      <input type="text" id="tutupTime" class="flatpickr-input" placeholder="Contoh: 5:30 PM">
+    </div>
+
+    <div id="nextOpenContainer" class="hidden">
+      <label for="nextOpenTime">Akan Dibuka Semula (jika tutup):</label>
+      <input type="text" id="nextOpenTime" class="flatpickr-input" placeholder="Contoh: 8:00 AM">
+    </div>
+
+    <label for="nota">Nota:</label>
+    <textarea id="nota" rows="3" placeholder="Contoh: Hari ini tutup awal sebab hujan."></textarea>
+
+    <button id="saveStatus" type="button">💾 Simpan Status</button>
+  </div>
+
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <!-- Firebase + Logic -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+    authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+    projectId: "mymaktehcafe-81d4e",
+    storageBucket: "mymaktehcafe-81d4e.appspot.com",
+    messagingSenderId: "28518221029",
+    appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const statusSelect = document.getElementById("statusSelect");
+  const bukaTime = document.getElementById("bukaTime");
+  const tutupTime = document.getElementById("tutupTime");
+  const nextOpenTime = document.getElementById("nextOpenTime");
+  const nota = document.getElementById("nota");
+  const saveBtn = document.getElementById("saveStatus");
+
+  const waktuContainer = document.getElementById("waktuContainer");
+  const nextOpenContainer = document.getElementById("nextOpenContainer");
+  const nextOpenPreview = document.getElementById("nextOpenPreview");
+  const nextOpenValue = document.getElementById("nextOpenValue");
+
+  flatpickr("#bukaTime", {
+    enableTime: true, noCalendar: true, dateFormat: "h:i K", time_24hr: false,
+    defaultHour: 8, defaultMinute: 0
+  });
+  flatpickr("#tutupTime", {
+    enableTime: true, noCalendar: true, dateFormat: "h:i K", time_24hr: false,
+    defaultHour: 17, defaultMinute: 30
+  });
+  flatpickr("#nextOpenTime", {
+    enableTime: true, noCalendar: true, dateFormat: "h:i K", time_24hr: false,
+    defaultHour: 8, defaultMinute: 0
+  });
+
+  statusSelect.oninput = () => {
+    const status = statusSelect.value.toLowerCase();
+    waktuContainer.style.display = status === "cuti" ? "none" : "block";
+    nextOpenContainer.classList.toggle("hidden", status !== "tutup");
+  };
+
+  saveBtn.onclick = async () => {
+    const status = statusSelect.value.toLowerCase();
+
+    if (status !== "cuti" && (!bukaTime.value || !tutupTime.value)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Maklumat tidak lengkap",
+        text: "Sila isi waktu buka dan tutup.",
+      });
+      return;
+    }
+
+    if (status === "tutup" && !nextOpenTime.value) {
+      Swal.fire({
+        icon: "warning",
+        title: "Maklumat tidak lengkap",
+        text: "Sila isi waktu dibuka semula.",
+      });
+      return;
+    }
+
+    const data = {
+      status,
+      buka: status === "cuti" ? "" : bukaTime.value,
+      tutup: status === "cuti" ? "" : tutupTime.value,
+      nextOpen: status === "tutup" ? nextOpenTime.value : "",
+      nota: nota.value,
+      updatedAt: new Date()
+    };
+
+    await setDoc(doc(db, "status", "cafeStatus"), data);
+
+    Swal.fire({
+      icon: "success",
+      title: "Berjaya!",
+      text: "Status berjaya disimpan!",
+      confirmButtonColor: "#c42217"
+    });
+
+    loadStatus();
+  };
+
+  async function loadStatus() {
+    const docSnap = await getDoc(doc(db, "status", "cafeStatus"));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const savedStatus = (data.status || "buka").toLowerCase();
+      statusSelect.value = savedStatus.charAt(0).toUpperCase() + savedStatus.slice(1);
+      bukaTime.value = data.buka || "";
+      tutupTime.value = data.tutup || "";
+      nextOpenTime.value = data.nextOpen || "";
+      nota.value = data.nota || "";
+      statusSelect.oninput();
+
+      if (savedStatus === "tutup" && data.nextOpen) {
+        nextOpenPreview.classList.remove("hidden");
+        nextOpenValue.innerText = data.nextOpen;
+      } else {
+        nextOpenPreview.classList.add("hidden");
+        nextOpenValue.innerText = "-";
+      }
+    }
+  }
+
+  function parseTime12Hour(str) {
+    const [time, modifier] = str.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return { hours, minutes };
+  }
+
+  function getCurrentTime() {
+    const now = new Date();
+    return { hours: now.getHours(), minutes: now.getMinutes() };
+  }
+
+  function isTimePassed(target, current) {
+    return (
+      current.hours > target.hours ||
+      (current.hours === target.hours && current.minutes >= target.minutes)
+    );
+  }
+
+  async function startAutoStatusChecker() {
+    setInterval(async () => {
+      const docSnap = await getDoc(doc(db, "status", "cafeStatus"));
+      if (!docSnap.exists()) return;
+
+      const data = docSnap.data();
+      const status = (data.status || "").toLowerCase();
+      const buka = data.buka;
+      const tutup = data.tutup;
+      if (status === "cuti" || !buka || !tutup) return;
+
+      const current = getCurrentTime();
+      const bukaTimeObj = parseTime12Hour(buka);
+      const tutupTimeObj = parseTime12Hour(tutup);
+
+      if (isTimePassed(bukaTimeObj, current) && !isTimePassed(tutupTimeObj, current)) {
+        if (status !== "buka") {
+          await updateDoc(doc(db, "status", "cafeStatus"), { status: "buka", nextOpen: "" });
+          loadStatus();
+        }
+      }
+
+      if (isTimePassed(tutupTimeObj, current)) {
+        if (status !== "tutup") {
+          await updateDoc(doc(db, "status", "cafeStatus"), { status: "tutup" });
+          loadStatus();
+        }
+      }
+    }, 30000);
+  }
+
+  function startLiveClock() {
+    const clock = document.getElementById("liveClock");
+    setInterval(() => {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, "0");
+      const seconds = now.getSeconds().toString().padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      clock.innerText = `🕒 Masa Sekarang: ${hours}:${minutes}:${seconds} ${ampm}`;
+    }, 1000);
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    loadStatus();
+    startAutoStatusChecker();
+    startLiveClock();
+  });
+
+</script>
+
+</body>
+</html>

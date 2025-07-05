@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Senarai Tempahan - MyMakTehCafe Admin</title>
+
+  <!-- Font Google -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      padding: 20px;
+      background-color: #750d0d;
+      margin: 0;
+    }
+
+    h2 {
+      color: #fff;
+      text-align: center;
+      font-size: 28px;
+      margin: 20px 0 30px;
+    }
+
+    /* Butang Kembali */
+   .back-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+  z-index: 999;
+  transition: transform 0.2s;
+}
+.back-btn:hover {
+  transform: scale(1.2);
+}
+
+
+    .filter {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .filter input[type="date"] {
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      margin-top: 10px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      color: white;
+      background-color: #006400;
+    }
+
+    .btn.delete {
+      background-color: #b22222;
+    }
+
+    .btn.reset {
+      background-color: #edd947;
+      color: #000;
+    }
+
+    .btn.receipt {
+      background-color: #1E90FF;
+    }
+
+    .order {
+      background-color: #ffffff;
+      border: 2px solid #edd947;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .order p {
+      margin: 6px 0;
+      color: #333;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin-top: 5px;
+    }
+
+    .status {
+      font-weight: bold;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .status.pending { background-color: #808080; color: white; }
+    .status.processing { background-color: #1E90FF; color: white; }
+    .status.pickup { background-color: #FFA500; color: white; }
+    .status.settle { background-color: #369c36; color: white; }
+
+    .status-select {
+      margin-top: 10px;
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    img {
+      margin-top: 10px;
+      border-radius: 10px;
+      max-width: 100%;
+    }
+
+    /* Modal Styling */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      max-width: 600px;
+      max-height: 90%;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 20px;
+      cursor: pointer;
+      color: #c42217;
+    }
+
+    .modal img {
+      max-width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    .modal h3 {
+      text-align: center;
+      color: #c42217;
+    }
+
+    .modal p {
+      margin: 8px 0;
+    }
+
+    .item-list {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Butang Back di kiri atas -->
+<button class="back-btn" onclick="window.location.href='dashboard.html'" aria-label="Kembali ke Dashboard">
+  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+</button>
+
+
+  <h2>Senarai Tempahan Pelajar</h2>
+
+  <div class="filter">
+    <label for="filterDate" style="color: white; font-weight: bold; margin-right: 10px;">Tapis Ikut Tarikh:</label>
+    <input type="date" id="filterDate" />
+    <button id="resetBtn" class="btn reset">Reset</button>
+  </div>
+
+  <div id="orders-container"></div>
+
+  <!-- Modal -->
+  <div id="receiptModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h3>Resit Tempahan</h3>
+      <div id="receiptContent"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      updateDoc,
+      deleteDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
+      authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
+      projectId: "mymaktehcafe-81d4e",
+      storageBucket: "mymaktehcafe-81d4e.appspot.com",
+      messagingSenderId: "28518221029",
+      appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const ordersContainer = document.getElementById("orders-container");
+
+    const receiptModal = document.getElementById("receiptModal");
+    const receiptContent = document.getElementById("receiptContent");
+    const closeBtn = document.querySelector(".close-btn");
+
+    closeBtn.onclick = () => receiptModal.style.display = "none";
+    window.onclick = (e) => { if (e.target === receiptModal) receiptModal.style.display = "none"; };
+
+    function formatTimestamp(timestamp) {
+      if (!timestamp) return "—";
+      const date = timestamp.toDate();
+      return date.toLocaleString('ms-MY', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+    }
+
+    async function fetchOrders(filterDate = null) {
+      const snapshot = await getDocs(collection(db, "orders"));
+      ordersContainer.innerHTML = "";
+
+      snapshot.forEach((docSnap) => {
+        const order = docSnap.data();
+        const createdAt = order.createdAt?.toDate?.();
+        if (!createdAt) return;
+
+        if (filterDate) {
+          const offsetMs = 8 * 60 * 60 * 1000;
+          const localDate = new Date(createdAt.getTime() + offsetMs);
+          const localDateStr = localDate.toISOString().split("T")[0];
+          if (localDateStr !== filterDate) return;
+        }
+
+        const orderDiv = document.createElement("div");
+        orderDiv.className = "order";
+
+        orderDiv.innerHTML = `
+          <p><strong>Order ID:</strong> ${order.orderId}</p>
+          <p><strong>Nama:</strong> ${order.customerName || "—"}</p>
+          <p><strong>Tarikh & Masa Tempahan:</strong> ${formatTimestamp(order.createdAt)}</p>
+          <p><strong>Status:</strong> <span class="status ${order.status || "pending"}">${(order.status || "pending").toUpperCase()}</span></p>
+          <p><strong>Jumlah:</strong> RM ${order.total?.toFixed(2) || "—"}</p>
+          <div>
+            <select class="status-select">
+              <option value="pending" ${order.status === "pending" ? "selected" : ""}>Sedang Disahkan</option>
+              <option value="processing" ${order.status === "processing" ? "selected" : ""}>Sedang Disediakan</option>
+              <option value="pickup" ${order.status === "pickup" ? "selected" : ""}>Sedia Diambil</option>
+              <option value="settle" ${order.status === "settle" ? "selected" : ""}>Selesai</option>
+            </select>
+            <button class="btn update">Kemas Kini Status</button>
+            <button class="btn delete">Padam</button>
+            <button class="btn receipt">Lihat Resit</button>
+          </div>
+        `;
+
+        const updateBtn = orderDiv.querySelector(".update");
+        const deleteBtn = orderDiv.querySelector(".delete");
+        const receiptBtn = orderDiv.querySelector(".receipt");
+        const statusSelect = orderDiv.querySelector(".status-select");
+        const statusSpan = orderDiv.querySelector(".status");
+
+        updateBtn.onclick = async () => {
+          const newStatus = statusSelect.value;
+          await updateDoc(doc(db, "orders", docSnap.id), { status: newStatus });
+          statusSpan.textContent = newStatus.toUpperCase();
+          statusSpan.className = `status ${newStatus}`;
+        };
+
+        deleteBtn.onclick = async () => {
+          const confirmDelete = confirm(`Padam order ID ${order.orderId}?`);
+          if (confirmDelete) {
+            await deleteDoc(doc(db, "orders", docSnap.id));
+            ordersContainer.removeChild(orderDiv);
+          }
+        };
+
+        receiptBtn.onclick = () => {
+          receiptContent.innerHTML = `
+            <p><strong>Nama:</strong> ${order.customerName || "—"}</p>
+            <p><strong>Order ID:</strong> ${order.orderId}</p>
+            <p><strong>Tarikh & Masa:</strong> ${formatTimestamp(order.createdAt)}</p>
+            <p><strong>Status:</strong> ${(order.status || "pending").toUpperCase()}</p>
+            <p><strong>Item:</strong></p>
+            <ul class="item-list">
+              ${order.orderDetails?.map(i => `<li>${i.name} x ${i.quantity}</li>`).join("") || "<li>Tiada item</li>"}
+            </ul>
+            <p><strong>Jumlah:</strong> RM ${order.total?.toFixed(2) || "—"}</p>
+            <p><strong>Bukti Bayaran:</strong></p>
+            ${order.uploadedFile?.url
+              ? order.uploadedFile.url.endsWith(".pdf")
+                ? `<a href="${order.uploadedFile.url}" target="_blank">Lihat Fail PDF</a>`
+                : `<img src="${order.uploadedFile.url}" alt="Bukti Bayaran" />`
+              : "Tiada fail dimuat naik"}
+          `;
+          receiptModal.style.display = "flex";
+        };
+
+        ordersContainer.appendChild(orderDiv);
+      });
+    }
+
+    document.getElementById("filterDate").value = new Date().toISOString().split("T")[0];
+
+    fetchOrders();
+
+    document.getElementById("filterDate").addEventListener("change", (e) => {
+      fetchOrders(e.target.value);
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      document.getElementById("filterDate").value = "";
+      fetchOrders();
+    });
+  </script>
+</body>
+</html>
