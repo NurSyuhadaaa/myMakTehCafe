@@ -1,201 +1,223 @@
+<!-- login.html (Guna Firebase compat dan padan dengan register.html) -->
 <!DOCTYPE html>
 <html lang="ms">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>myMakTehCafe - Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>myMakTehCafe - Log Masuk</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase CDN (Compat Version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
   <style>
-    .stats-boxes {
+    :root {
+      --primary: #800000;
+      --secondary: #c9b323;
+      --dark: #4b0000;
+      --white: #ffffff;
+    }
+    * {margin: 0; padding: 0; box-sizing: border-box;}
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--primary);
+      min-height: 100vh;
       display: flex;
-      gap: 20px;
-      margin-bottom: 30px;
-      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
     }
-    .stat-box {
-      flex: 1;
-      min-width: 180px;
-      background-color: #edd947;
-      padding: 15px 20px;
-      border-radius: 15px;
-      color: #000;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .stat-box h3 {
-      margin: 0 0 8px;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .stat-box p {
-      font-size: 20px;
-      font-weight: bold;
-    }
-    canvas#salesChart {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-    }
-    #staffInfo {
+    body::before {
+      content: '';
       position: absolute;
-      top: 20px;
-      right: 30px;
-      font-weight: bold;
-      color: #fff;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background:
+        linear-gradient(rgba(128, 0, 0, 0.75), rgba(75, 0, 0, 0.85)),
+        url('assets/bg.png') center/cover no-repeat;
+      z-index: -1;
+    }
+    .login-container {
+      display: flex;
+      width: 90%;
+      max-width: 1000px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+    .logo-section {
+      flex: 1;
+      background: linear-gradient(rgba(128, 0, 0, 0.8), rgba(128, 0, 0, 0.9)), url('assets/cafe-bg.jpg') center/cover;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      color: var(--white);
+      text-align: center;
+    }
+    .logo-img {
+      width: 150px;
+      margin-bottom: 20px;
+    }
+    .welcome-text {
+      font-family: 'Dancing Script', cursive;
+      font-size: 2.5rem;
+      color: var(--secondary);
+    }
+    .login-section {
+      flex: 1;
+      padding: 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .login-title {
+      font-family: 'Dancing Script', cursive;
+      font-size: 2.2rem;
+      color: var(--primary);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .input-group i {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+    }
+    .input-field {
+      width: 100%;
+      padding: 15px 15px 15px 45px;
+      border: 2px solid rgba(128, 0, 0, 0.1);
+      border-radius: 50px;
+      font-size: 1rem;
+    }
+    .login-btn, .signup-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: 50px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .login-btn {
+      border: none;
+      background: linear-gradient(to right, var(--primary), var(--dark));
+      color: var(--white);
+    }
+    .signup-btn {
+      margin-top: 15px;
+      border: 2px solid var(--secondary);
+      background: transparent;
+      color: var(--primary);
     }
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="logo">
-      <h2>myMakTehCafe</h2>
+  <div class="login-container">
+    <div class="logo-section">
+      <img src="assets/logo.png" alt="Logo" class="logo-img" />
+      <h1 class="welcome-text">Selamat Datang</h1>
+      <p class="slogan">Ke Sistem Pengurusan myMakTehCafe</p>
     </div>
-    <ul>
-      <li><a href="dashboard.html" class="active">Laman Utama</a></li>
-      <li><a href="menu.html">Menu</a></li>
-      <li><a href="order.html">Pesanan</a></li>
-      <li><a href="status.html">Status Operasi</a></li>
-      <li><a href="announcement.html">Pengumuman</a></li>
-      <li><a href="#" onclick="logout()">Log Keluar</a></li>
-    </ul>
-  </div>
-
-  <div class="main-content">
-    <div id="staffInfo">Pengguna</div>
-
-    <div id="home" class="content active">
-      <h1>Selamat Datang ke Laman Utama</h1>
-      <p>Ini adalah laman utama untuk menguruskan cafe anda.</p>
-
-      <div class="stats-boxes">
-        <div class="stat-box">
-          <h3>Tarikh</h3>
-          <p id="todayDate">—</p>
-        </div>
-        <div class="stat-box">
-          <h3>Tempahan Hari Ini</h3>
-          <p id="todayOrders">0</p>
-        </div>
-        <div class="stat-box">
-          <h3>Jumlah Jualan (RM)</h3>
-          <p id="todayRevenue">0.00</p>
-        </div>
+    <div class="login-section">
+      <h2 class="login-title">Log Masuk</h2>
+      <div class="input-group">
+        <i class="fas fa-id-card"></i>
+        <input type="text" placeholder="ID Staf" class="input-field" id="staffId" />
       </div>
-
-      <canvas id="salesChart" height="100"></canvas>
+      <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" placeholder="Kata Laluan" class="input-field" id="password" />
+      </div>
+      <button class="login-btn" onclick="handleLogin()">Log Masuk</button>
+      <button class="signup-btn" onclick="handleSignup()">Daftar Akaun Baru</button>
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-storage-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCWEeJCWEDvrw3SA6DMdXU2NSWBWV0MGis",
       authDomain: "mymaktehcafe-81d4e.firebaseapp.com",
       projectId: "mymaktehcafe-81d4e",
-      storageBucket: "mymaktehcafe-81d4e.appspot.com",
+      storageBucket: "mymaktehcafe-81d4e",
       messagingSenderId: "28518221029",
       appId: "1:28518221029:web:56a93d30093f7c4d39c00c",
       measurementId: "G-FZXKYNHJP4"
     };
+
     firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    async function loadDashboardStats() {
-      const dbRef = firebase.firestore();
-      const ordersRef = dbRef.collection("orders");
+    async function handleLogin() {
+      const staffId = document.getElementById('staffId').value.trim().toUpperCase();
+      const password = document.getElementById('password').value.trim();
 
-      const today = new Date();
-      const todayStr = today.toISOString().split("T")[0];
-      let dailyOrders = 0;
-      let dailyRevenue = 0;
-      const salesByDate = {};
+      if (!staffId || !password) {
+        return Swal.fire({
+          title: 'Ralat',
+          text: 'Sila masukkan ID Staf dan kata laluan.',
+          icon: 'error',
+          confirmButtonColor: '#800000'
+        });
+      }
 
-      const snapshot = await ordersRef.get();
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (!data.createdAt) return;
+      try {
+        const snapshot = await db.collection('staff').where('staffId', '==', staffId).get();
+        if (snapshot.empty) throw new Error('ID Staf tidak dijumpai.');
 
-        const orderDate = data.createdAt.toDate();
-        const dateStr = orderDate.toISOString().split("T")[0];
+        const userDoc = snapshot.docs[0];
+        const email = userDoc.data().email;
+        const name = userDoc.data().name || '';
 
-        if (!salesByDate[dateStr]) {
-          salesByDate[dateStr] = { count: 0, total: 0 };
+        await auth.signInWithEmailAndPassword(email, password);
+
+        localStorage.setItem('loggedInStaffId', staffId);
+        localStorage.setItem('loggedInStaffName', name);
+
+        Swal.fire({
+          title: 'Berjaya!',
+          text: 'Log masuk berjaya!',
+          icon: 'success',
+          confirmButtonColor: '#800000'
+        }).then(() => {
+          window.location.href = 'dashboard.html';
+        });
+
+      } catch (err) {
+        let message = '';
+        switch (err.code) {
+          case 'auth/invalid-login-credentials':
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+            message = 'ID Staf atau kata laluan salah.';
+            break;
+          default:
+            message = err.message || 'Ralat semasa log masuk.';
         }
-        salesByDate[dateStr].count++;
-        salesByDate[dateStr].total += parseFloat(data.total || 0);
 
-        if (dateStr === todayStr) {
-          dailyOrders++;
-          dailyRevenue += parseFloat(data.total || 0);
-        }
-      });
-
-      document.getElementById("todayDate").textContent = today.toLocaleDateString("ms-MY");
-      document.getElementById("todayOrders").textContent = dailyOrders;
-      document.getElementById("todayRevenue").textContent = dailyRevenue.toFixed(2);
-
-      const sortedDates = Object.keys(salesByDate).sort();
-      const chartLabels = sortedDates.slice(-7);
-      const chartData = chartLabels.map(date => salesByDate[date].total);
-
-      renderChart(chartLabels, chartData);
+        Swal.fire({
+          title: 'Ralat',
+          text: message,
+          icon: 'error',
+          confirmButtonColor: '#800000'
+        });
+      }
     }
 
-    function renderChart(labels, data) {
-      new Chart(document.getElementById("salesChart"), {
-        type: "line",
-        data: {
-          labels: labels,
-          datasets: [{
-            label: "Jumlah Jualan (RM)",
-            data: data,
-            borderColor: "#c42217",
-            backgroundColor: "rgba(196, 34, 23, 0.1)",
-            fill: true,
-            tension: 0.3,
-            pointBackgroundColor: "#c42217",
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            title: { display: true, text: "Prestasi Jualan 7 Hari Terakhir" }
-          },
-          scales: {
-            y: { beginAtZero: true },
-            x: { ticks: { autoSkip: false } }
-          }
-        }
-      });
-    }
-
-    window.onload = function () {
-      loadDashboardStats();
-
-      const name = localStorage.getItem('loggedInStaffName') || 'Pengguna';
-      const staffId = localStorage.getItem('loggedInStaffId') || '';
-      document.getElementById("staffInfo").textContent = `${name} (${staffId})`;
-    };
-
-    function logout() {
-      Swal.fire({
-        title: 'Log keluar?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#c42217',
-        cancelButtonColor: '#999',
-        confirmButtonText: 'Ya',
-        cancelButtonText: 'Tidak'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          window.location.href = "login.html";
-        }
-      });
+    function handleSignup() {
+      window.location.href = 'register.html';
     }
   </script>
 </body>
