@@ -187,6 +187,17 @@
 
   <h2>Senarai Tempahan Pelajar</h2>
 
+<div class="filter" style="text-align: center;">
+  <label for="searchName" style="color: white; font-weight: bold; display: block; margin-bottom: 8px;">Cari Nama Pelajar:</label>
+  <div style="position: relative; display: inline-block; width: 30%;">
+    <input type="text" id="searchName" placeholder="Cari" style="padding: 8px 0px 8px 10px; border-radius: 8px; border: none; width: 100%;" />
+    <button id="clearNameBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; cursor: pointer; color: #333;">&times;</button>
+  </div>
+</div>
+
+
+
+
   <div class="filter">
     <label for="filterDate" style="color: white; font-weight: bold; margin-right: 10px;">Tapis Ikut Tarikh:</label>
     <input type="date" id="filterDate" />
@@ -245,21 +256,28 @@
       });
     }
 
-    async function fetchOrders(filterDate = null) {
-      const snapshot = await getDocs(collection(db, "orders"));
-      ordersContainer.innerHTML = "";
+    async function fetchOrders(filterDate = null, searchName = "") {
+  const snapshot = await getDocs(collection(db, "orders"));
+  ordersContainer.innerHTML = "";
 
-      snapshot.forEach((docSnap) => {
-        const order = docSnap.data();
-        const createdAt = order.createdAt?.toDate?.();
-        if (!createdAt) return;
+  snapshot.forEach((docSnap) => {
+    const order = docSnap.data();
+    const createdAt = order.createdAt?.toDate?.();
+    if (!createdAt) return;
 
-        if (filterDate) {
-          const offsetMs = 8 * 60 * 60 * 1000;
-          const localDate = new Date(createdAt.getTime() + offsetMs);
-          const localDateStr = localDate.toISOString().split("T")[0];
-          if (localDateStr !== filterDate) return;
-        }
+    // Tapis ikut tarikh
+    if (filterDate) {
+      const offsetMs = 8 * 60 * 60 * 1000;
+      const localDate = new Date(createdAt.getTime() + offsetMs);
+      const localDateStr = localDate.toISOString().split("T")[0];
+      if (localDateStr !== filterDate) return;
+    }
+
+    // Tapis ikut nama
+    if (searchName) {
+      const name = order.customerName?.toLowerCase() || "";
+      if (!name.includes(searchName.toLowerCase())) return;
+    }
 
         const orderDiv = document.createElement("div");
         orderDiv.className = "order";
@@ -338,9 +356,30 @@
     });
 
     document.getElementById("resetBtn").addEventListener("click", () => {
-      document.getElementById("filterDate").value = "";
-      fetchOrders();
-    });
+  document.getElementById("filterDate").value = "";
+  document.getElementById("searchName").value = "";
+  fetchOrders();
+});
+
+
+    document.getElementById("searchName").addEventListener("input", (e) => {
+  const filterDate = document.getElementById("filterDate").value;
+  const searchName = e.target.value.trim();
+  fetchOrders(filterDate, searchName);
+});
+
+document.getElementById("clearNameBtn").addEventListener("click", () => {
+  document.getElementById("searchName").value = "";
+  const filterDate = document.getElementById("filterDate").value;
+  fetchOrders(filterDate, ""); // <-- Beri nama kosong secara jelas
+});
+
+document.getElementById("searchName").addEventListener("input", (e) => {
+  const filterDate = document.getElementById("filterDate").value;
+  const searchName = e.target.value.trim();
+  fetchOrders(filterDate, searchName);
+});
+
   </script>
 </body>
 </html>
